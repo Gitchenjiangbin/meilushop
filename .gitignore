@@ -1,0 +1,7 @@
+.cache/
+.idea/
+node_modules/
+package-lock.json
+run-log*
+MyApp*
+task.db

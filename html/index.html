@@ -1,0 +1,664 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css" />
+    <link rel="stylesheet" href="../assets/css/app.css" />
+  </head>
+  <body>
+    <!-- 自定义标题栏 -->
+    <div class="title-bar">
+      <div class="title">商品信息采集</div>
+      <div class="title-bar-buttons">
+        <button id="minimize">_</button>
+        <button id="maximize">
+          <i id="maximize-icon" class="bi bi-arrows-angle-expand"></i>
+        </button>
+        <button id="close"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <!-- 公共部分 -->
+    <div class="menu">
+      <ul class="nav">
+        <li class="nav-item">
+          <a class="nav-link active" href="./index.html">任务</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="./data.html">数据中心</a>
+        </li>
+      </ul>
+    </div>
+    <div class=".alert"></div>
+    <div class="form-row align-items-center" style="margin-left: 10px">
+      <div class="col-auto">
+        <label class="sr-only" for="proxy_url">代理地址</label>
+        <div class="input-group mb-2">
+          <div class="input-group-prepend">
+            <div class="input-group-text">代理地址</div>
+          </div>
+          <input
+            type="text"
+            class="form-control"
+            id="proxy_url"
+            name="proxy_url"
+            placeholder="请输入代理地址"
+          />
+        </div>
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-primary mb-2" id="sumbProxy">
+          保存代理地址
+        </button>
+      </div>
+    </div>
+    <div class=".container" id="meilu-task" style="padding: 15px">
+      <button id="add_task_show" class="btn btn-primary">添加任务</button>
+      <button type="button" class="btn btn-secondary" id="reload">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          class="bi bi-arrow-repeat"
+          viewBox="0 0 16 16"
+        >
+          <path
+            d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"
+          ></path>
+          <path
+            fill-rule="evenodd"
+            d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"
+          ></path>
+        </svg>
+      </button>
+      <a class="btn btn-success" id="importExcel">导入商家</a>
+
+      <div>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">任务名称</th>
+              <th scope="col">商家id</th>
+              <th scope="col">最小值</th>
+              <th scope="col">最大值</th>
+              <th scope="col">代理地址</th>
+              <th scope="col">抓取频率</th>
+              <th scope="col">任务状态</th>
+              <th scope="col">创建时间</th>
+              <th scope="col">最近一次执时间</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody id="task-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="../electron/renderer.js"></script>
+    <!-- 引入 jQuery -->
+    <script src="../node_modules/jquery/dist/jquery.min.js"></script>
+    <!-- 引入 Popper.js -->
+    <script src="../node_modules/@popperjs/core/dist/umd/popper.min.js"></script>
+    <!-- 引入 Bootstrap 的 JavaScript -->
+    <script src="../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      let isTask = false
+      const file = '../proxy.txt'
+      getProUrl()
+      document
+        .getElementById('sumbProxy')
+        .addEventListener('click', async () => {
+          const proxy_url = document.getElementById('proxy_url').value
+          if (proxy_url == '' || proxy_url == null) {
+            alert('请输入代理地址')
+            return
+          }
+          try {
+            const proxy = await window.db.query(
+              'SELECT * FROM proxy  where id = 1'
+            )
+            if (proxy) {
+              await window.db.update(
+                'UPDATE proxy SET proxy_url = ? WHERE id = ?',
+                [proxy_url, proxy[0].id]
+              )
+            } else {
+              let sql = 'insert into proxy (proxy_url) values (?)'
+              await window.db.insert(sql, [proxy_url])
+            }
+
+            alert('设置代理成功')
+            getProUrl()
+          } catch (err) {
+            console.log(err)
+          }
+        })
+
+      async function getProUrl() {
+        try {
+          const proxy = await window.db.query(
+            'SELECT * FROM proxy  where id = 1'
+          )
+          if (proxy == '' || proxy == null) {
+            alert('请设置代理地址')
+            return
+          }
+          const proxy_url_value = proxy[0].proxy_url ?? ''
+
+          document.getElementById('proxy_url').value = proxy_url_value
+        } catch (error) {
+          console.log(error)
+          console.log('代理地址文件未设置或者不存在')
+        }
+      }
+      // 动态加载公共部分
+      // fetch('./header.html')
+      //   .then((response) => response.text())
+      //   .then((data) => {
+      //     document.getElementById('header').innerHTML = data
+      //   })
+
+      document.getElementById('reload').addEventListener('click', async () => {
+        console.log('reload')
+        fetchDataList()
+      })
+
+      document
+        .getElementById('add_task_show')
+        .addEventListener('click', async () => {
+          if (isTask != false) {
+            alert('请先完成添加')
+            return
+          }
+          isTask = true
+          const tableBody = document.getElementById('task-table-body')
+          tableBody.insertAdjacentHTML(
+            'beforeend',
+            `
+            <tr id="new-task-row">
+              <td></td>
+              <td><input type="text" id="task_name" class="form-control" /></td>
+              <td><input type="text" id="merchant_id" class="form-control" /></td>
+              <td><input type="text" id="min_price" class="form-control" /></td>
+              <td><input type="text" id="max_price" class="form-control" /></td>
+              <td><input type="text" id="proxy_url" class="form-control" /></td>
+
+              <td>
+                <select id="frequency" class="form-control">
+                  <option value="1">默认执行一次</option>
+                  <option value="2">每半小时</option>
+                </select>
+              </td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td>
+                <button class="btn btn-primary btn-sm" id="save-new-task-btn">保存</button>
+                <button class="btn btn-secondary btn-sm" id="cacenl-add">取消</button>
+                </td>
+            </tr>
+          `
+          )
+          document.querySelectorAll('#save-new-task-btn').forEach((btn) => {
+            btn.addEventListener('click', addTask)
+          })
+          document.querySelectorAll('#cacenl-add').forEach((btn) => {
+            btn.addEventListener('click', handleCancel)
+          })
+        })
+
+      // 获取数据
+      async function fetchDataList() {
+        try {
+          const frequencyMap = {
+            1: '默认执行一次',
+            2: '每半小时'
+          }
+          const result = await window.db.query(
+            'SELECT * FROM tasks  ORDER BY status DESC,id DESC'
+          )
+          const tableBody = document.getElementById('task-table-body')
+          tableBody.innerHTML = ''
+          result.forEach((task) => {
+            const row = document.createElement('tr')
+            let statusTxt = ''
+            switch (task.status) {
+              case 0:
+                statusTxt =
+                  '<div class="btn btn-outline-secondary btn-sm">待执行</div>'
+                break
+              case 1:
+                statusTxt =
+                  '<div class="btn btn-outline-success btn-sm">执行中</div>'
+                break
+              case 2:
+                statusTxt =
+                  '<div class="btn btn-outline-light btn-sm">已完成</div>'
+                break
+              case 3:
+                statusTxt =
+                  '<div class="btn btn-outline-primary btn-sm">等待下次执行</div>'
+                break
+              default:
+                statusTxt =
+                  '<div class="btn btn-outline-secondary btn-sm">待执行</div>'
+                break
+            }
+
+            row.innerHTML = `
+                <th scope="row" data-name="id">${task.id}</th>
+                <td class="editable" data-name="task_name">${
+                  task.task_name
+                }</td>
+                <td class="editable copay-merchant" data-name="merchant_id" style="user-select: text; cursor: pointer;" data-url="https://jp.mercari.com/user/profile/${
+                  task.merchant_id
+                }">${task.merchant_id}</td>
+                <td class="editable" data-name="min_price">${
+                  task.min_price
+                }</td>
+                <td class="editable" data-name="max_price">${
+                  task.max_price
+                }</td>
+                <td class="editable" data-name="proxy_url">${
+                  task.proxy_url
+                }</td>
+                <td class="editable" data-name="frequency" style="min-width:120px;">
+                  ${frequencyMap[task.frequency] || ''}
+                </td>
+                <td style="min-width:90px;">${statusTxt}</td>
+                <td>${task.create_time}</td>
+                <td>${task.last_execution || ''}</td>
+
+                <td style="min-width:175px;">
+                  <button class="btn btn-primary btn-sm edit-btn" data-id="${
+                    task.id
+                  }">编辑</button>
+                  <button class="btn btn-success btn-sm save-btn d-none" data-id="${
+                    task.id
+                  }">保存</button>
+                  <button class="btn btn-secondary btn-sm cancel-btn d-none" data-id="${
+                    task.id
+                  }">取消</button>
+                  <button class="btn btn-danger btn-sm delete-btn" data-id="${
+                    task.id
+                  }">删除</button>
+                </td>
+              `
+            tableBody.appendChild(row)
+          })
+
+          document.querySelectorAll('.edit-btn').forEach((btn) => {
+            btn.addEventListener('click', handleEdit)
+          })
+          document.querySelectorAll('.save-btn').forEach((btn) => {
+            btn.addEventListener('click', handleSave)
+          })
+          document.querySelectorAll('.cancel-btn').forEach((btn) => {
+            btn.addEventListener('click', handleCancel)
+          })
+          document.querySelectorAll('.delete-btn').forEach((btn) => {
+            btn.addEventListener('click', handleDelete)
+          })
+
+          document.querySelectorAll('.copay-merchant').forEach((btn) => {
+            btn.addEventListener('dblclick', copyProductUrl)
+          })
+        } catch (error) {
+          console.error('Failed to fetch data:', error)
+        }
+      }
+
+      // 编辑
+      function handleEdit(event) {
+        const id = event.target.getAttribute('data-id')
+        // 显示保存和取消按钮，隐藏编辑和删除按钮
+        document
+          .querySelectorAll(`button[data-id="${id}"].edit-btn`)
+          .forEach((btn) => {
+            btn.classList.add('d-none')
+          })
+
+        document
+          .querySelectorAll(`button[data-id="${id}"].save-btn`)
+          .forEach((btn) => {
+            btn.classList.remove('d-none')
+          })
+        document
+          .querySelectorAll(`button[data-id="${id}"].cancel-btn`)
+          .forEach((btn) => {
+            btn.classList.remove('d-none')
+          })
+        const taskId = event.target.getAttribute('data-id')
+        const row = event.target.closest('tr')
+
+        // 切换到编辑模式
+        row.querySelectorAll('.editable').forEach((cell) => {
+          console.log('cell', cell)
+          const value = cell.textContent.trim()
+          const field = cell.getAttribute('data-name')
+          if (
+            cell.textContent.includes('默认执行一次') ||
+            cell.textContent.includes('每半小时')
+          ) {
+            // 替换执行频率为下拉框
+            const select = `
+              <select class="form-control edit-field" data-field="frequency">
+                <option value="1"${
+                  value === '默认执行一次' ? ' selected' : ''
+                }>不选择（默认执行一次）</option>
+                <option value="2"${
+                  value === '每半小时' ? ' selected' : ''
+                }>每半小时</option>
+              </select>`
+            cell.innerHTML = select
+          } else {
+            cell.innerHTML = `<input type="text" value="${value}" class="form-control edit-field" data-field="${field}">`
+          }
+        })
+
+        // 绑定事件处理程序
+        bindEventHandlers()
+      }
+
+      // 保存数据
+      async function handleSave(event) {
+        const taskId = event.target.getAttribute('data-id')
+        const row = event.target.closest('tr')
+
+        const formData = {
+          id: taskId,
+          task_name: row.querySelector('input[data-field="task_name"]').value,
+          merchant_id: row.querySelector('input[data-field="merchant_id"]')
+            .value,
+          min_price: row.querySelector('input[data-field="min_price"]').value,
+          max_price: row.querySelector('input[data-field="max_price"]').value,
+          proxy_url: row.querySelector('input[data-field="proxy_url"]').value,
+          frequency: row.querySelector('select[data-field="frequency"]').value
+        }
+
+        try {
+          await window.db.update(
+            'UPDATE tasks SET task_name = ?, merchant_id = ?, min_price = ?, max_price = ?, proxy_url = ?, frequency = ? WHERE id = ?',
+            [
+              formData.task_name,
+              formData.merchant_id,
+              formData.min_price,
+              formData.max_price,
+              formData.proxy_url,
+              formData.frequency,
+              formData.id
+            ]
+          )
+          fetchDataList() // 重新加载数据
+        } catch (error) {
+          console.error('Failed to update task:', error)
+        }
+      }
+
+      // 取消编辑
+      function handleCancel(event) {
+        isTask = false
+        fetchDataList() // 重新加载数据，取消编辑
+      }
+
+      // 删除
+      async function handleDelete(event) {
+        const taskId = event.target.getAttribute('data-id')
+        if (confirm('确定要删除这条任务吗？')) {
+          try {
+            await window.db.delete('DELETE FROM tasks WHERE id = ?', [taskId])
+            fetchDataList() // 重新加载数据
+          } catch (error) {
+            console.error('Failed to delete task:', error)
+          }
+        }
+      }
+      // 加载数据
+      fetchDataList()
+
+      async function addTask() {
+        const timestamp = Date.now()
+        const time = formatTimestamp(timestamp)
+        const formData = {
+          merchant_id: document.getElementById('merchant_id').value,
+          task_name: document.getElementById('task_name').value,
+          min_price: document.getElementById('min_price').value,
+          max_price: document.getElementById('max_price').value,
+          proxy_url: document.getElementById('proxy_url').value,
+          create_time: time,
+          frequency: document.getElementById('frequency').value
+        }
+        // 验证字段
+        if (formData.merchant_id === '') {
+          document.getElementById('merchant_id').focus
+          alert('请输入商家ID')
+          return
+        }
+
+        if (formData.task_name === '') {
+          document.getElementById('task_name').focus
+          alert('请输入任务名称')
+          return
+        }
+
+        if (!/^\d+(\.\d{1,2})?$/.test(formData.min_price)) {
+          document.getElementById('min_price').focus
+          alert('请输入有效的最小价格')
+          return
+        }
+
+        if (!/^\d+(\.\d{1,2})?$/.test(formData.max_price)) {
+          document.getElementById('max_price').focus
+          alert('请输入有效的最大价格')
+          return
+        }
+
+        if (
+          formData.min_price &&
+          formData.max_price &&
+          parseFloat(formData.min_price) > parseFloat(formData.max_price)
+        ) {
+          document.getElementById('task_name').focus
+          alert('最小价格不能大于最大价格')
+          return
+        }
+
+        if (!/^https?:\/\/[^\s]+$/.test(formData.proxy_url)) {
+          document.getElementById('proxy_url').focus
+          alert('请输入有效的代理地址')
+          return
+        }
+
+        if (!['1', '2', '3'].includes(formData.frequency)) {
+          alert('请选择有效的执行频率')
+          return
+        }
+        let sql =
+          'insert into tasks (merchant_id, task_name, min_price, max_price, proxy_url, frequency,create_time) values (?, ?, ?, ?, ?, ?, ?)'
+        try {
+          await window.db.insert(sql, [
+            formData.merchant_id,
+            formData.task_name,
+            formData.min_price,
+            formData.max_price,
+            formData.proxy_url,
+            formData.frequency,
+            formData.create_time
+          ])
+          isTask = false
+          fetchDataList()
+          alert('任务添加成功')
+        } catch (error) {
+          console.error('Failed to insert data:', error)
+          alert('任务添加失败')
+        }
+      }
+
+      // 绑定事件
+      function bindEventHandlers() {
+        document.querySelectorAll('.edit-btn').forEach((btn) => {
+          btn.addEventListener('click', handleEdit)
+        })
+        document.querySelectorAll('.save-btn').forEach((btn) => {
+          btn.addEventListener('click', handleSave)
+        })
+        document.querySelectorAll('.cancel-btn').forEach((btn) => {
+          btn.addEventListener('click', handleCancel)
+        })
+        document.querySelectorAll('.delete-btn').forEach((btn) => {
+          btn.addEventListener('click', handleDelete)
+        })
+      }
+
+      // 导入商家到任务
+      document
+        .getElementById('importExcel')
+        .addEventListener('click', async () => {
+          try {
+            // 打开文件对话框并获取文件路径
+            const filePath = await window.electron.openFileDialog()
+            if (filePath) {
+              // 读取 Excel 文件
+              const data = await window.electron.readExcelFile(filePath)
+              console.log(data) // 打印数据到控制台，方便调试
+
+              // // 显示数据到表格
+              // const table = document.getElementById('data-table')
+              // table.innerHTML = '' // 清空表格内容
+
+              if (data.length > 0) {
+                let insertDataArray = []
+                // 逐行处理数据
+                for (const row of data) {
+                  if (row.merchant_id == '') {
+                    alert(`商家ID不能为空`)
+                    return
+                  }
+                  if (row.min_price > row.max_price) {
+                    alert(`商家 ${row.merchant_id} 的最小价格不能大于最大价格`)
+                    return
+                  }
+
+                  if (row.proxy_url == '') {
+                    alert(`商家 ${row.merchant_id} 的代理地址不能为空`)
+                    return
+                  }
+
+                  if (row.frequency == '') {
+                    row.frequency = 2
+                  }
+
+                  row.proxy_url = ensureHttpProtocol(row.proxy_url)
+                  const existingRecord = await window.db.get(
+                    'SELECT * FROM tasks WHERE merchant_id = ?',
+                    row.merchant_id
+                  )
+                  const timestamp = Date.now()
+                  const create_time = formatTimestamp(timestamp)
+
+                  if (!existingRecord) {
+                    insertDataArray.push({
+                      task_name: `商家${row.merchant_id}`,
+                      merchant_id: row.merchant_id,
+                      min_price: row.min_price,
+                      max_price: row.max_price,
+                      proxy_url: row.proxy_url,
+                      frequency: row.frequency,
+                      create_time: create_time
+                    })
+                  } else {
+                    await window.db.update(
+                      'UPDATE tasks SET  min_price = ?, max_price = ?, proxy_url = ?, frequency = ? WHERE merchant_id = ?',
+                      [
+                        row.min_price,
+                        row.max_price,
+                        row.proxy_url,
+                        row.frequency,
+                        row.merchant_id
+                      ]
+                    )
+                    console.log('修改数据成功')
+                    continue
+                  }
+                }
+                // 批量插入数据
+                if (insertDataArray.length > 0) {
+                  const flattenedData = insertDataArray.flatMap((item) => [
+                    item.task_name,
+                    item.merchant_id,
+                    item.min_price,
+                    item.max_price,
+                    item.proxy_url,
+                    item.frequency,
+                    item.create_time
+                  ])
+
+                  for (let i = 0; i < flattenedData.length; i += 7) {
+                    console.log(flattenedData.slice(i, i + 7))
+                    await window.db.insert(
+                      'INSERT INTO tasks (task_name, merchant_id, min_price, max_price, proxy_url, frequency, create_time) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                      flattenedData.slice(i, i + 7)
+                    )
+                  }
+
+                  console.log('数据批量插入成功')
+                }
+                fetchDataList()
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch data:', error)
+          }
+        })
+
+      function ensureHttpProtocol(proxyUrl) {
+        // 检查代理地址是否包含协议
+        if (!/^https?:\/\//i.test(proxyUrl)) {
+          // 如果没有协议，默认使用 http://
+          return `http://${proxyUrl}`
+        }
+        return proxyUrl
+      }
+
+      async function copyProductUrl(event) {
+        const productUrl = event.target.getAttribute('data-url')
+        try {
+          await navigator.clipboard.writeText(productUrl)
+          showAlert('复制成功')
+        } catch (error) {
+          console.error('Failed to copy product URL:', error)
+          fallbackCopyTextToClipboard(productUrl)
+        }
+      }
+
+      function fallbackCopyTextToClipboard(text) {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        showAlert('复制成功')
+      }
+
+      function showAlert(message) {
+        const alertDiv = document.createElement('div')
+        alertDiv.classList.add('alert')
+        alertDiv.textContent = message
+        document.body.appendChild(alertDiv)
+
+        setTimeout(() => {
+          alertDiv.classList.add('hidden')
+          setTimeout(() => {
+            document.body.removeChild(alertDiv)
+          }, 1000) // 确保动画完成后再移除元素
+        }, 1000) // 1秒后开始淡出
+      }
+    </script>
+  </body>
+</html>

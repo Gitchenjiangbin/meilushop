@@ -1,0 +1,72 @@
+/* styles.css */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+    font-size: 14px;
+  }
+  
+  .title-bar {
+    -webkit-app-region: drag; /* 允许拖动窗口 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2c3e50;
+    color: white;
+    padding: 10px;
+    height: 40px;
+  }
+  
+  .title-bar-buttons {
+    -webkit-app-region: no-drag; /* 不允许拖动按钮区域 */
+  }
+  
+  .title-bar-buttons button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    margin-left: 10px;
+    cursor: pointer;
+  }
+  
+  .title-bar-buttons button:hover {
+    background-color: #34495e;
+  }
+  
+  .content {
+    padding: 20px;
+  }
+  .menu{
+    padding:5px 20px;
+  }
+  .nav-item a{
+    color:#000;
+  }
+  .active{
+    color:#007bff !important;
+  }
+
+  .alert {
+    padding: 20px;
+    background-color: #343a40;
+    color: white;
+    position: fixed; /* 或者 absolute，取决于你的需求 */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* 偏移自身宽高的一半以实现居中 */
+    border-radius: 5px;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 1s;
+    width: max-content; /* 或者具体宽度，取决于你的需求 */
+    box-sizing: border-box; /* 确保padding不会增加宽度 */
+  }
+  .alert.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #task-table-body{
+    background:white;
+  }

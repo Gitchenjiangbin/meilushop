@@ -1,0 +1,23 @@
+directories:
+  output: build
+  buildResources: build
+appId: 123456789.yourappname
+productName: 商品采集程序
+files:
+  - filter:
+      - assets/**/*
+      - electron/**/*
+      - node_modules/**/*
+      - main.js
+      - index.html
+      - data.html
+      - package.json
+win:
+  target: nsis
+mac:
+  target: dmg
+linux:
+  target:
+    - AppImage
+    - deb
+electronVersion: 31.4.0
